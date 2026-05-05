@@ -3,8 +3,8 @@
 #include <SoftwareSerial.h>
 
 // ───────────── WiFi ─────────────
-const char* ssid = "Your WiFi ssid/name";
-const char* password = "Your WiFi Password";
+const char* ssid = "Your WiFi ssid";
+const char* password = "Your Wifi password";
 
 // ───────────── Telnet ─────────────
 ESPTelnet telnet;
@@ -13,25 +13,20 @@ bool authenticated = false;
 const char* user = "admin";
 const char* pass = "1234";
 
-// ───────────── Static IP Config ─────────────
-IPAddress local_IP(192, 168, 0, 105); // replace the ip address that is free(not assigned to anyother devices) on your router
+// ───────────── Static IP ─────────────
+IPAddress local_IP(192, 168, 0, 105);
 IPAddress gateway(192, 168, 0, 1);
 IPAddress subnet(255, 255, 255, 0);
 
-// ───────────── UART (to ESP32) ─────────────
-// RX, TX
+// ───────────── UART ─────────────
 SoftwareSerial espSerial(D5, D6);
 
 // ───────────── Setup ─────────────
 void setup() {
-  Serial.begin(115200);     // debug
-  espSerial.begin(115200);  // UART to ESP32
+  Serial.begin(115200);
+  espSerial.begin(115200);
 
-  // Apply static IP
-  if (!WiFi.config(local_IP, gateway, subnet)) {
-    Serial.println("Static IP Failed");
-  }
-
+  WiFi.config(local_IP, gateway, subnet);
   WiFi.begin(ssid, password);
 
   Serial.print("Connecting WiFi");
@@ -41,7 +36,7 @@ void setup() {
   }
 
   Serial.println("\nConnected!");
-  Serial.println("IP: " + WiFi.localIP().toString());
+  Serial.println(WiFi.localIP());
 
   telnet.onConnect([](String ip) {
     telnet.println("=== ESP8266 Terminal ===");
@@ -55,8 +50,6 @@ void setup() {
 
   telnet.onInputReceived(onTelnetInput);
   telnet.begin(2323);
-
-  Serial.println("Telnet ready");
 }
 
 // ───────────── Loop ─────────────
@@ -84,7 +77,7 @@ void onTelnetInput(String input) {
       if (input == pass) {
         authenticated = true;
         waitPass = false;
-        telnet.println("\n✓ Logged in");
+        telnet.println("\n[OK] Logged in");
         telnet.print("> ");
       } else {
         telnet.println("Wrong password");
@@ -100,10 +93,17 @@ void onTelnetInput(String input) {
 
 // ───────────── Command Handler ─────────────
 void handleCommand(String cmd) {
+  cmd.trim();
+
+  if (cmd == "categories list") {
+    espSerial.println("CATEGORIES");
+  return;
+  }
+
   String protocol = buildProtocol(cmd);
 
   if (protocol.startsWith("ERR")) {
-    telnet.println("✗ Invalid command");
+    telnet.println("[ERR] Invalid command");
     telnet.print("> ");
     return;
   }
@@ -115,7 +115,6 @@ void handleCommand(String cmd) {
 // ───────────── CLI → Protocol ─────────────
 String buildProtocol(String input) {
   input.trim();
-  input.toLowerCase();
 
   int firstSpace = input.indexOf(' ');
   if (firstSpace < 0) return "ERR|Invalid";
@@ -142,6 +141,16 @@ String buildProtocol(String input) {
   if (action == "clear")
     return "CLEAR|" + category;
 
+  if (action == "edit") {
+    int split = value.indexOf(' ');
+    if (split < 0) return "ERR|Invalid edit";
+
+    String oldVal = value.substring(0, split);
+    String newVal = value.substring(split + 1);
+
+    return "EDIT|" + category + "|" + oldVal + "|" + newVal;
+  }
+
   return "ERR|Unknown";
 }
 
@@ -167,10 +176,10 @@ void handleResponse(String line) {
   Serial.println("<< " + line);
 
   if (line.startsWith("OK|")) {
-    telnet.println("✓ " + line.substring(3));
+    telnet.println("[OK] " + line.substring(3));
   }
   else if (line.startsWith("ERR|")) {
-    telnet.println("✗ " + line.substring(4));
+    telnet.println("[ERR] " + line.substring(4));
   }
   else if (line.startsWith("DATA|")) {
     int p = line.indexOf('|', 5);
