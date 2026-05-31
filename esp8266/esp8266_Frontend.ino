@@ -4,7 +4,7 @@
 
 // ───────────── WiFi ─────────────
 const char* ssid = "Your WiFi ssid";
-const char* password = "Your Wifi password";
+const char* password = "Your WiFi password";
 
 // ───────────── Telnet ─────────────
 ESPTelnet telnet;
@@ -95,11 +95,42 @@ void onTelnetInput(String input) {
 void handleCommand(String cmd) {
   cmd.trim();
 
+  // LOGOUT COMMAND
+  if (cmd == "logout") {
+      authenticated = false;
+      telnet.println("\nLogged out.");
+      telnet.print("User: ");
+      return;
+  }
+
+  // HELP COMMAND (local, handled on ESP8266)
+  if (cmd == "help") {
+    telnet.println("\nAvailable Commands:\n");
+
+    telnet.println("<category> add <data>");
+    telnet.println("<category> del <data>");
+    telnet.println("<category> edit <old> <new>");
+    telnet.println("<category> list");
+    telnet.println("<category> search <data>");
+    telnet.println("<category> clear");
+    telnet.println("categories list");
+
+    telnet.println("\nExamples:");
+    telnet.println("notes add test");
+    telnet.println("notes list");
+    telnet.println("notes edit test text");
+
+    telnet.print("> ");
+    return;
+  }
+
+  // CATEGORY LIST
   if (cmd == "categories list") {
     espSerial.println("CATEGORIES");
   return;
   }
 
+  // NORMAL COMMAND FLOW
   String protocol = buildProtocol(cmd);
 
   if (protocol.startsWith("ERR")) {
