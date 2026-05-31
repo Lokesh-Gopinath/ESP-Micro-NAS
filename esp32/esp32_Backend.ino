@@ -44,7 +44,7 @@ String path(String cat) {
 // ───────────── Command Handler ─────────────
 void handleCommand(String cmd) {
 
-  // 🔥 Special command: categories list
+  //  Special command: categories list
   if (cmd == "CATEGORIES") {
     listCategories();
     return;
@@ -173,13 +173,19 @@ void editItem(String cat, String oldVal, String newVal) {
 
   bool found = false;
 
-  while (f.available()) {
-    String l = f.readStringUntil('\n'); l.trim();
+  oldVal.trim();
+  newVal.trim();
 
-    if (l == oldVal) {
+  while (f.available()) {
+    String l = f.readStringUntil('\n');
+    l.trim();
+
+    String cleanLine = l;
+
+    if (cleanLine.equalsIgnoreCase(oldVal)) {
       t.println(newVal);
       found = true;
-    } else if (l.length()) {
+    } else if (l.length() > 0) {
       t.println(l);
     }
   }
